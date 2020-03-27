@@ -1,5 +1,11 @@
+# github.com/dgrijalva/jwt-go v3.2.0+incompatible
+## explicit
+github.com/dgrijalva/jwt-go
 # github.com/golang/snappy v0.0.0-20180518054509-2e65f85255db
 github.com/golang/snappy
+# github.com/gorilla/mux v1.7.4
+## explicit
+github.com/gorilla/mux
 # github.com/mattn/go-sqlite3 v2.0.3+incompatible
 ## explicit
 github.com/mattn/go-sqlite3
