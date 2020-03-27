@@ -2,26 +2,39 @@ package db
 
 import (
 	"fmt"
+	"path/filepath"
 
+	//xorm needs qlite
 	_ "github.com/mattn/go-sqlite3"
 	"xorm.io/xorm"
 )
 
-type post struct {
-	id        int    `xorm:"int autoincr not null unique 'id'"`
-	username  string `xorm:"varchar(20) not null"`
-	date      string `xorm:"text"`
-	content   string `xorm:"text"`
-	likeCount int    `xorm:"int"`
+// Connect connects to the database
+func Connect() (db *xorm.Engine, err error) {
+	DbPath := "./pkg/db/DB.db"
+	path, _ := filepath.Abs(DbPath)
+	db, err = xorm.NewEngine("sqlite3", path)
+	if err != nil {
+		return db, err
+	}
+	user := Users{Username: "admin"}
+
+	fmt.Println(user)
+	return db, err
 }
 
-func Connect() (db *xorm.Engine, err error) {
-	db, err = xorm.NewEngine("sqlite3", "./DB.db")
+// AddPost adds new post to db
+func AddPost(db *xorm.Engine, post *Posts) error {
+	db, err := Connect()
 	if err != nil {
-		print("error")
-		panic(err)
 	}
-	print("readed database")
-	fmt.Println(db.DBMetas())
+	_, err = db.InsertOne(post)
+	if err != nil {
+	}
+	return err
+}
+
+// GetUser get user from db
+func GetUser(user *Users) {
 	return
 }
