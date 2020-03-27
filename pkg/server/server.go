@@ -10,37 +10,23 @@ import (
 	"github.com/gorilla/mux"
 )
 
-// TODO get this key with .env
+// TODO: get this key with .env
 // 256-bit key
 var jwtKey = []byte("576FB6F5488F1C75CF19A477BAB3B")
-
-var users = map[string]string{
-	"user1": "123",
-	"user2": "123",
-}
-
-type credentials struct {
-	Password string `json:"password"`
-	Username string `json:"username"`
-}
-type jwtClaims struct {
-	Username string `json:"username"`
-	jwt.StandardClaims
-}
 
 func signin(w http.ResponseWriter, r *http.Request) {
 	fmt.Println(r.Header)
 	w.Header().Add("Auth", "Error")
-	var creds credentials
+	var creds Credentials
 	err := json.NewDecoder(r.Body).Decode(&creds)
 	if err != nil {
 		w.WriteHeader(http.StatusBadRequest)
 		fmt.Println(err.Error())
 		return
 	}
-	expectedPassword, ok := users[creds.Username]
+	isValidated := ValidateUserPassword(&creds)
 
-	if !ok || expectedPassword != creds.Password {
+	if !isValidated {
 		w.WriteHeader(http.StatusUnauthorized)
 		return
 	}
@@ -61,7 +47,7 @@ func signin(w http.ResponseWriter, r *http.Request) {
 	}
 
 	http.SetCookie(w, &http.Cookie{
-		Name:    "tokenJWT",
+		Name:    "token",
 		Value:   tokenString,
 		Expires: expirationTime,
 	})
@@ -80,7 +66,7 @@ func authMiddleware(next http.Handler) http.Handler {
 			}
 		}
 
-		c, err := r.Cookie("tokenJWT")
+		c, err := r.Cookie("token")
 		if err != nil {
 			http.Error(w, "No Cookie", http.StatusForbidden)
 			return
@@ -110,7 +96,7 @@ func authMiddleware(next http.Handler) http.Handler {
 }
 func welcome(w http.ResponseWriter, r *http.Request) {
 
-	c, _ := r.Cookie("tokenJWT")
+	c, _ := r.Cookie("token")
 
 	tokenString := c.Value
 	claims := &jwtClaims{}
@@ -119,15 +105,17 @@ func welcome(w http.ResponseWriter, r *http.Request) {
 	})
 	fmt.Fprint(w, "Hello ", claims.Username)
 }
+
 func logout(w http.ResponseWriter, r *http.Request) {
 	http.SetCookie(w, &http.Cookie{
-		Name:  "tokenJWT",
+		Name:  "token",
 		Value: "LOGOUT",
 	})
 
 }
+
 func refresh(w http.ResponseWriter, r *http.Request) {
-	cokie, err := r.Cookie("tokenJWT")
+	cokie, err := r.Cookie("token")
 	if err != nil {
 		if err == http.ErrNoCookie {
 			w.WriteHeader(http.StatusUnauthorized)
@@ -168,7 +156,7 @@ func refresh(w http.ResponseWriter, r *http.Request) {
 	}
 
 	http.SetCookie(w, &http.Cookie{
-		Name:    "tokenJWT",
+		Name:    "token",
 		Value:   tokenString,
 		Expires: expirationTime,
 	})

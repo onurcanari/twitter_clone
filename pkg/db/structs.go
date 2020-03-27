@@ -15,8 +15,8 @@ type Posts struct {
 type Users struct {
 	Email     string `xorm:"varchar(50) 'Email'" json:"Email"`
 	Fullname  string `xorm:"varchar(50) 'Fullname'" json:"Fullname"`
-	Username  string `xorm:"varchar(20) notnull pk unique " json:"Username"`
 	Password  string `xorm:"text" json:"Password"`
+	Username  string `xorm:"varchar(20) notnull pk unique" json:"Username"`
 	About     string `xorm:"text" json:"About"`
 	Followers int    `xorm:"int 'Followers'" json:"Followers"`
 	Follows   int    `xorm:"int 'Follows'" json:"Follows"`
