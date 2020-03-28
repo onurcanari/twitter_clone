@@ -13,12 +13,12 @@ type Posts struct {
 
 // Users represent user table on db
 type Users struct {
-	Email     string `xorm:"varchar(50) 'Email'" json:"Email"`
-	Fullname  string `xorm:"varchar(50) 'Fullname'" json:"Fullname"`
-	Password  string `xorm:"text" json:"Password"`
-	Username  string `xorm:"varchar(20) notnull pk unique" json:"Username"`
+	Email     string `xorm:"varchar(50) 'Email'" json:"Email,omitempty"`
+	Fullname  string `xorm:"varchar(50) 'Fullname'" json:"Fullname,omitempty"`
+	Password  string `xorm:"text" json:"Password,omitempty"`
+	Username  string `xorm:"varchar(20) notnull pk unique" json:"Username,omitempty"`
 	About     string `xorm:"text" json:"About"`
 	Followers int    `xorm:"int 'Followers'" json:"Followers"`
 	Follows   int    `xorm:"int 'Follows'" json:"Follows"`
-	Posts     string
+	Posts     string `xorm:"text" json:"Posts,omitempty"`
 }

@@ -9,7 +9,7 @@ type Credentials struct {
 	Username string `xorm:"varchar(20) notnull pk unique" json:"Username"`
 }
 
-type jwtClaims struct {
+type JwtClaims struct {
 	Username string `json:"Username"`
 	jwt.StandardClaims
 }

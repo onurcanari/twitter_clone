@@ -29,7 +29,7 @@ func AddPost(post *Posts) error {
 	return err
 }
 
-// GetPosts gets 
+// GetPosts gets
 func GetPosts(offset int) []Posts {
 	db, _ := Connect()
 	var posts []Posts
