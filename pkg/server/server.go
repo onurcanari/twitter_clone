@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"net/http"
 	"time"
-
 	"github.com/dgrijalva/jwt-go"
 	"github.com/gorilla/mux"
 )
@@ -16,7 +15,7 @@ var jwtKey = []byte("576FB6F5488F1C75CF19A477BAB3B")
 
 func signin(w http.ResponseWriter, r *http.Request) {
 	fmt.Println(r.Header)
-	w.Header().Add("Auth", "Error")
+	w.Header().Add("Auth", "false")
 	var creds Credentials
 	err := json.NewDecoder(r.Body).Decode(&creds)
 	if err != nil {
@@ -51,7 +50,7 @@ func signin(w http.ResponseWriter, r *http.Request) {
 		Value:   tokenString,
 		Expires: expirationTime,
 	})
-	w.Header().Set("Auth", "Succesfull")
+	w.Header().Set("Auth", "true")
 }
 
 func authMiddleware(next http.Handler) http.Handler {

@@ -8,7 +8,7 @@ type Posts struct {
 	Username  string    `xorm:"varchar(20) notnull" json:"Username"`
 	Content   string    `xorm:"text" json:"Content"`
 	LikeCount int       `xorm:"int 'LikeCount'" json:"LikeCount"`
-	CreatedAt time.Time `xorm:"created 'CreatedAt'"`
+	CreatedAt time.Time `xorm:"created 'CreatedAt'" json:"CreatedAt"`
 }
 
 // Users represent user table on db

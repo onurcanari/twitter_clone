@@ -21,6 +21,7 @@ func Connect() (db *xorm.Engine, err error) {
 func AddPost(post *Posts) error {
 	db, err := Connect()
 	if err != nil {
+
 	}
 	_, err = db.InsertOne(post)
 	if err != nil {
@@ -28,15 +29,32 @@ func AddPost(post *Posts) error {
 	return err
 }
 
+// GetPosts gets 
+func GetPosts(offset int) []Posts {
+	db, _ := Connect()
+	var posts []Posts
+	err := db.Table("Posts").Desc("CreatedAt").Limit(10, offset).Find(&posts)
+	if err != nil {
+		fmt.Println(err)
+	}
+	return posts
+}
+
 // GetUserPassword get user pass from db
 func GetUserPassword(username string) (string, error) {
-	user, err := GetUser(username)
+	db, err := Connect()
 	if err != nil {
-		return "", nil
-
+		print("connect error")
+	}
+	user := Users{Username: username}
+	isFound, err := db.Table("Users").Select("Password").Get(&user)
+	if err != nil {
+		print("connect error")
+	}
+	if isFound {
+		fmt.Println(user)
 	}
 	return user.Password, nil
-
 }
 
 // GetUser get user from db
@@ -46,7 +64,7 @@ func GetUser(username string) (Users, error) {
 		print("connect error")
 	}
 	user := Users{Username: username}
-	isFound, err := db.Get(&user)
+	isFound, err := db.Select("fullname, username, about, followers, follows").Get(&user)
 	if err != nil {
 		print("connect error")
 	}
