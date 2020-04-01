@@ -3,8 +3,8 @@ package server
 import (
 	"encoding/json"
 	"fmt"
+	"io/ioutil"
 	"net/http"
-	"strconv"
 	"time"
 
 	"github.com/dgrijalva/jwt-go"
@@ -17,6 +17,7 @@ import (
 var jwtKey = []byte("576FB6F5488F1C75CF19A477BAB3B")
 
 func signin(w http.ResponseWriter, r *http.Request) {
+	fmt.Println("signin")
 	w.Header().Add("Auth", "false")
 	var creds Credentials
 	err := json.NewDecoder(r.Body).Decode(&creds)
@@ -57,6 +58,7 @@ func signin(w http.ResponseWriter, r *http.Request) {
 
 func authMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		fmt.Println("auth middleware")
 		exceptions := [2]string{"/signin", "/logout"}
 		for _, val := range exceptions {
 			if r.URL.String() == val {
@@ -79,14 +81,10 @@ func authMiddleware(next http.Handler) http.Handler {
 			http.Error(w, "Unauthorized", http.StatusUnauthorized)
 			return
 		}
-		next.ServeHTTP(w, r)
 		fmt.Println("validated.")
+		next.ServeHTTP(w, r)
 
 	})
-}
-func welcome(w http.ResponseWriter, r *http.Request) {
-	username := GetNameFromToken(r)
-	fmt.Fprint(w, "Hello ", username)
 }
 
 func logout(w http.ResponseWriter, r *http.Request) {
@@ -96,15 +94,18 @@ func logout(w http.ResponseWriter, r *http.Request) {
 	})
 
 }
-
 func addPost(w http.ResponseWriter, r *http.Request) {
+	fmt.Println("add post")
+
 	username := GetNameFromToken(r)
 	var post DB.Posts
 	err := json.NewDecoder(r.Body).Decode(&post)
 	if err != nil {
+		fmt.Println(err)
 		http.Error(w, "Status Bad Request", http.StatusBadRequest)
 		return
 	}
+
 	if len(post.Content) > 0 {
 		post.Username = username
 		DB.AddPost(&post)
@@ -114,13 +115,22 @@ func addPost(w http.ResponseWriter, r *http.Request) {
 	return
 }
 func getUserDetails(w http.ResponseWriter, r *http.Request) {
-	r.ParseForm()
-	username := r.Form.Get("username")
-	if username == "" {
-		http.Error(w, "Username must be entered.", http.StatusBadRequest)
-		return 
+	fmt.Println("get user details")
+
+	var user DB.Users
+	err := json.NewDecoder(r.Body).Decode(&user)
+	if err != nil {
+		fmt.Print("user: ")
+		fmt.Println(user)
+		fmt.Println(err)
+		http.Error(w, "Status Bad Request", http.StatusBadRequest)
+		return
 	}
-	user, err := DB.GetUser(username)
+	if user.Username == "" {
+		http.Error(w, "Username must be entered.", http.StatusBadRequest)
+		return
+	}
+	user, err = DB.GetUser(user)
 	if err != nil {
 		http.Error(w, "Cant get user details.", http.StatusNotFound)
 		return
@@ -129,30 +139,24 @@ func getUserDetails(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		w.WriteHeader(http.StatusNotAcceptable)
 	}
+	initHeader(w.Header())
 	w.Write(userJSON)
 	return
 }
 
 func getPosts(w http.ResponseWriter, r *http.Request) {
-	r.ParseForm()
-	tmpstr := r.Form.Get("offset")
-	var offset int
-	if tmpstr != "" {
-		var err error
-		offset, err = strconv.Atoi(tmpstr)
-		if err != nil {
-			http.Error(w, "Offset error.", http.StatusServiceUnavailable)
-			return
-		}
-	}
-	offset = 0
-
+	var decodedJSON map[string]int
+	body, err := ioutil.ReadAll(r.Body)
+	json.Unmarshal(body, &decodedJSON)
+	offset := decodedJSON["offset"]
+	print(decodedJSON)
 	posts := DB.GetPosts(offset)
 	postsJSON, err := json.Marshal(posts)
 	if err != nil {
 		http.Error(w, "Parse Error", http.StatusServiceUnavailable)
 		return
 	}
+	initHeader(w.Header())
 	w.Write(postsJSON)
 }
 
@@ -161,12 +165,17 @@ func CreateServer() *mux.Router {
 	r := mux.NewRouter()
 	r.HandleFunc("/signin", signin).Methods("POST")
 	r.HandleFunc("/logout", logout).Methods("GET")
-	r.HandleFunc("/home", welcome).Methods("GET")
 	r.HandleFunc("/addPost", addPost).Methods("POST")
 	r.HandleFunc("/getPosts", getPosts).Methods("POST")
 	r.HandleFunc("/getUserDetails", getUserDetails).Methods("POST")
 	r.Use(authMiddleware)
 	return r
+}
+func initHeader(h http.Header) {
+	h.Set("Content-Type", "application/json")
+	h.Set("Access-Control-Allow-Origin", "*")
+	h.Set("Access-Control-Allow-Methods", "POST, GET, OPTIONS")
+	h.Set("Access-Control-Allow-Headers", "Content-Type, Access-Control-Allow-Headers, Authorization, X-Requested-With")
 }
 
 /*

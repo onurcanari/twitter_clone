@@ -58,12 +58,11 @@ func GetUserPassword(username string) (string, error) {
 }
 
 // GetUser get user from db
-func GetUser(username string) (Users, error) {
+func GetUser(user Users) (Users, error) {
 	db, err := Connect()
 	if err != nil {
 		print("connect error")
 	}
-	user := Users{Username: username}
 	isFound, err := db.Select("fullname, username, about, followers, follows").Get(&user)
 	if err != nil {
 		print("connect error")
