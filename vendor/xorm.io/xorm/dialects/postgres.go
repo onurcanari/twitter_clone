@@ -660,7 +660,7 @@ var (
 		"TIMEZONE_HOUR":                    true,
 		"TIMEZONE_MINUTE":                  true,
 		"TO":                               true,
-		"x-csrf-token":                            true,
+		"TOKEN":                            true,
 		"TOP_LEVEL_COUNT":                  true,
 		"TRAILING":                         true,
 		"TRANSACTION":                      true,
