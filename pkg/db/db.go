@@ -24,8 +24,6 @@ func AddPost(post *Posts) error {
 
 	}
 	_, err = db.InsertOne(post)
-	if err != nil {
-	}
 	return err
 }
 

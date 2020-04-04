@@ -5,16 +5,21 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/dgrijalva/jwt-go"
 	"github.com/gorilla/mux"
+	"github.com/gorilla/websocket"
 	DB "github.com/onurcanari/kartaca_spa/pkg/db"
+	WS "github.com/onurcanari/kartaca_spa/pkg/websocket"
 )
 
 // TODO: get this key with .env
 // 256-bit key
 var jwtKey = []byte("576FB6F5488F1C75CF19A477BAB3B")
+
+var upgrader = websocket.Upgrader{}
 
 func signin(w http.ResponseWriter, r *http.Request) {
 	fmt.Println("signin")
@@ -94,7 +99,7 @@ func logout(w http.ResponseWriter, r *http.Request) {
 	})
 
 }
-func addPost(w http.ResponseWriter, r *http.Request) {
+func addPost(hub *WS.Hub, w http.ResponseWriter, r *http.Request) {
 	fmt.Println("add post")
 
 	username := GetNameFromToken(r)
@@ -105,15 +110,23 @@ func addPost(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Status Bad Request", http.StatusBadRequest)
 		return
 	}
-
+	post.Content = strings.Trim(post.Content, "\t \n")
 	if len(post.Content) > 0 {
 		post.Username = username
-		DB.AddPost(&post)
+		err := DB.AddPost(&post)
+		if err != nil {
+			fmt.Println(err)
+			http.Error(w, "Status Bad Request", http.StatusBadRequest)
+			return
+		}
+		postJSON, _ := json.Marshal(post)
+		hub.Broadcast <- postJSON
 		return
 	}
 	http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
 	return
 }
+
 func getUserDetails(w http.ResponseWriter, r *http.Request) {
 	fmt.Println("get user details")
 
@@ -161,16 +174,22 @@ func getPosts(w http.ResponseWriter, r *http.Request) {
 }
 
 // CreateServer creates server.
-func CreateServer() *mux.Router {
+func CreateServer(hub *WS.Hub) *mux.Router {
 	r := mux.NewRouter()
 	r.HandleFunc("/signin", signin).Methods("POST")
 	r.HandleFunc("/logout", logout).Methods("GET")
-	r.HandleFunc("/addPost", addPost).Methods("POST")
+	r.HandleFunc("/addPost", func(w http.ResponseWriter, r *http.Request) {
+		addPost(hub, w, r)
+	}).Methods("POST")
 	r.HandleFunc("/getPosts", getPosts).Methods("POST")
 	r.HandleFunc("/getUserDetails", getUserDetails).Methods("POST")
+	r.HandleFunc("/livePosts", func(w http.ResponseWriter, r *http.Request) {
+		WS.Serve(hub, w, r)
+	})
 	r.Use(authMiddleware)
 	return r
 }
+
 func initHeader(h http.Header) {
 	h.Set("Content-Type", "application/json")
 	h.Set("Access-Control-Allow-Origin", "*")
