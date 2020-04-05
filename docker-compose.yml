@@ -1,0 +1,15 @@
+version: "2"
+
+services:
+  frontend-vue:
+    build:
+      context: .
+      dockerfile: "./web/Dockerfile"
+    ports:
+      - "8080:8080"    
+    
+  backend-go:
+    build: .
+    ports:
+      - "8888:8888"
+

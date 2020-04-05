@@ -14,6 +14,10 @@ func Connect() (db *xorm.Engine, err error) {
 	DbPath := "./pkg/db/DB.db"
 	path, _ := filepath.Abs(DbPath)
 	db, err = xorm.NewEngine("sqlite3", path)
+	fmt.Println(path)
+	if err != nil {
+		fmt.Println("cant connect to database")
+	}
 	return db, err
 }
 
@@ -21,7 +25,7 @@ func Connect() (db *xorm.Engine, err error) {
 func AddPost(post *Posts) error {
 	db, err := Connect()
 	if err != nil {
-
+		fmt.Println("cant connect to database")
 	}
 	_, err = db.InsertOne(post)
 	return err
@@ -59,7 +63,7 @@ func GetUserPassword(username string) (string, error) {
 func GetUser(user Users) (Users, error) {
 	db, err := Connect()
 	if err != nil {
-		print("connect error")
+		fmt.Println("cant connect to database")
 	}
 	isFound, err := db.Select("fullname, username, about, followers, follows").Get(&user)
 	if err != nil {
