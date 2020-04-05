@@ -69,8 +69,9 @@ func signin(w http.ResponseWriter, r *http.Request) {
 func authMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		setupResponse(&w, r)
-		if r.Method == http.MethodOptions {
+		if r.URL.String() == "/signin" && r.Method == http.MethodOptions {
 			w.WriteHeader(http.StatusOK)
+			return
 		}
 		fmt.Println("auth middleware")
 		exceptions := [4]string{"/signin", "/logout", "/getPosts", "/livePosts"}
@@ -81,7 +82,6 @@ func authMiddleware(next http.Handler) http.Handler {
 			}
 		}
 		_, token, err := GetClaimsToken(r)
-
 		if err != nil {
 			if err == jwt.ErrSignatureInvalid {
 				http.Error(w, "Unauthorized", http.StatusUnauthorized)
