@@ -11,6 +11,7 @@ import (
 	"github.com/dgrijalva/jwt-go"
 	"github.com/gorilla/mux"
 	"github.com/gorilla/websocket"
+
 	DB "github.com/onurcanari/kartaca_spa/pkg/db"
 	WS "github.com/onurcanari/kartaca_spa/pkg/websocket"
 )
@@ -23,7 +24,9 @@ var upgrader = websocket.Upgrader{}
 
 func signin(w http.ResponseWriter, r *http.Request) {
 	fmt.Println("signin")
-	w.Header().Add("Auth", "false")
+	if r.Method == http.MethodOptions {
+		w.WriteHeader(http.StatusOK)
+	}
 	var creds Credentials
 	err := json.NewDecoder(r.Body).Decode(&creds)
 	if err != nil {
@@ -31,6 +34,8 @@ func signin(w http.ResponseWriter, r *http.Request) {
 		fmt.Println(err.Error())
 		return
 	}
+
+	print(r.Body)
 	isValidated := ValidateUserPassword(&creds)
 
 	if !isValidated {
@@ -58,13 +63,17 @@ func signin(w http.ResponseWriter, r *http.Request) {
 		Value:   tokenString,
 		Expires: expirationTime,
 	})
-	w.Header().Set("Auth", "true")
+
 }
 
 func authMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		setupResponse(&w, r)
+		if r.Method == http.MethodOptions {
+			w.WriteHeader(http.StatusOK)
+		}
 		fmt.Println("auth middleware")
-		exceptions := [2]string{"/signin", "/logout"}
+		exceptions := [4]string{"/signin", "/logout", "/getPosts", "/livePosts"}
 		for _, val := range exceptions {
 			if r.URL.String() == val {
 				next.ServeHTTP(w, r)
@@ -99,6 +108,13 @@ func logout(w http.ResponseWriter, r *http.Request) {
 	})
 
 }
+func isSigned(w http.ResponseWriter, r *http.Request) {
+	setupResponse(&w, r)
+	if r.Method == http.MethodOptions {
+		w.WriteHeader(http.StatusOK)
+	}
+	return
+}
 func addPost(hub *WS.Hub, w http.ResponseWriter, r *http.Request) {
 	fmt.Println("add post")
 
@@ -123,6 +139,8 @@ func addPost(hub *WS.Hub, w http.ResponseWriter, r *http.Request) {
 		hub.Broadcast <- postJSON
 		return
 	}
+	setupResponse(&w, r)
+
 	http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
 	return
 }
@@ -139,10 +157,11 @@ func getUserDetails(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Status Bad Request", http.StatusBadRequest)
 		return
 	}
+
 	if user.Username == "" {
-		http.Error(w, "Username must be entered.", http.StatusBadRequest)
-		return
+		user.Username = GetNameFromToken(r)
 	}
+
 	user, err = DB.GetUser(user)
 	if err != nil {
 		http.Error(w, "Cant get user details.", http.StatusNotFound)
@@ -152,7 +171,8 @@ func getUserDetails(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		w.WriteHeader(http.StatusNotAcceptable)
 	}
-	initHeader(w.Header())
+	setupResponse(&w, r)
+
 	w.Write(userJSON)
 	return
 }
@@ -169,81 +189,31 @@ func getPosts(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Parse Error", http.StatusServiceUnavailable)
 		return
 	}
-	initHeader(w.Header())
+	setupResponse(&w, r)
+	w.Header().Set("Access-Control-Allow-Origin", "*")
 	w.Write(postsJSON)
 }
 
 // CreateServer creates server.
 func CreateServer(hub *WS.Hub) *mux.Router {
 	r := mux.NewRouter()
-	r.HandleFunc("/signin", signin).Methods("POST")
-	r.HandleFunc("/logout", logout).Methods("GET")
+	r.HandleFunc("/signin", signin).Methods("POST", "OPTIONS")
+	r.HandleFunc("/logout", logout).Methods("GET", "OPTIONS")
+	r.HandleFunc("/isSigned", isSigned).Methods("GET", "OPTIONS")
 	r.HandleFunc("/addPost", func(w http.ResponseWriter, r *http.Request) {
 		addPost(hub, w, r)
-	}).Methods("POST")
-	r.HandleFunc("/getPosts", getPosts).Methods("POST")
-	r.HandleFunc("/getUserDetails", getUserDetails).Methods("POST")
+	}).Methods("POST", "OPTIONS")
+	r.HandleFunc("/getPosts", getPosts).Methods("POST", "OPTIONS")
+	r.HandleFunc("/getUserDetails", getUserDetails).Methods("POST", "OPTIONS")
 	r.HandleFunc("/livePosts", func(w http.ResponseWriter, r *http.Request) {
 		WS.Serve(hub, w, r)
-	})
+	}).Methods("OPTIONS", "GET")
 	r.Use(authMiddleware)
 	return r
 }
 
-func initHeader(h http.Header) {
-	h.Set("Content-Type", "application/json")
-	h.Set("Access-Control-Allow-Origin", "*")
-	h.Set("Access-Control-Allow-Methods", "POST, GET, OPTIONS")
-	h.Set("Access-Control-Allow-Headers", "Content-Type, Access-Control-Allow-Headers, Authorization, X-Requested-With")
+func setupResponse(w *http.ResponseWriter, req *http.Request) {
+	(*w).Header().Set("Access-Control-Allow-Origin", "*")
+	(*w).Header().Set("Access-Control-Allow-Methods", "POST, GET, OPTIONS, PUT, DELETE")
+	(*w).Header().Set("Access-Control-Allow-Headers", "Accept, Content-Type, Content-Length, Accept-Encoding, X-CSRF-Token, Authorization, X-Requested-With")
 }
-
-/*
-func refresh(w http.ResponseWriter, r *http.Request) {
-	cokie, err := r.Cookie("x-csrf-token")
-	if err != nil {
-		if err == http.ErrNoCookie {
-			w.WriteHeader(http.StatusUnauthorized)
-			return
-		}
-		w.WriteHeader(http.StatusBadRequest)
-		return
-	}
-	tknStr := cokie.Value
-	claims := &JwtClaims{}
-	tkn, err := jwt.ParseWithClaims(tknStr, claims, func(token *jwt.Token) (interface{}, error) {
-		return jwtKey, nil
-	})
-	if err != nil {
-		if err == jwt.ErrSignatureInvalid {
-			w.WriteHeader(http.StatusUnauthorized)
-			return
-		}
-		w.WriteHeader(http.StatusBadRequest)
-		return
-	}
-	if !tkn.Valid {
-		w.WriteHeader(http.StatusUnauthorized)
-		return
-	}
-	if time.Unix(claims.ExpiresAt, 0).Sub(time.Now()) > 30*time.Second {
-		w.WriteHeader(http.StatusBadRequest)
-		return
-	}
-	expirationTime := time.Now().Add(1 * time.Minute)
-	claims.ExpiresAt = expirationTime.Unix()
-	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
-
-	tokenString, err := token.SignedString(jwtKey)
-	if err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-		return
-	}
-
-	http.SetCookie(w, &http.Cookie{
-		Name:    "x-csrf-token",
-		Value:   tokenString,
-		Expires: expirationTime,
-	})
-
-}
-*/

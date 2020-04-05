@@ -11,5 +11,4 @@ func ValidateUserPassword(creds *Credentials) bool {
 		return true
 	}
 	return false
-
 }
