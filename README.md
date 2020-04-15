@@ -6,6 +6,10 @@
 - `docker-compose up --build` 
 
 -http://localhost:8080 de proje çalışmaya başlamış olacaktır.
+
+Username: admin
+Password: admin
+
 CORS bazı isteklerde sorun çıkardığından siteye giriş yapabilmek için tarayıcıda CORS u devre dışı bırakmak gerekmektedir. Şu şekilde yapılabilir.
 
 Windows
